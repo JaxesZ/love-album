@@ -102,9 +102,10 @@ class MasonryAlbum {
 
     /**
      * 计算每列需要放多少张照片
-     * 需要保证 "一个循环单元高度" 远超视口对角线，避免重置时被用户看到
-     * 估算：旋转后视口对角线高 ≈ viewportWidth * sin + viewportHeight * cos
-     * 简单按 viewport 较大边的 2 倍计算，再保底 12 张
+     * 需要保证：
+     *   1. "一个循环单元高度" 远超视口对角线（避免重置被看到）
+     *   2. 是 photos.length 的整数倍（循环重置时序列无缝衔接）
+     *   3. 至少 photos.length * 2，让用户滚动看到的内容富有变化
      */
     getPhotosPerColumn() {
         const cardH = this.getCardSize().h;
@@ -112,11 +113,17 @@ class MasonryAlbum {
         const cardUnit = cardH + gap;
         const viewportH = this.viewport.clientHeight || 600;
         const viewportW = this.viewport.clientWidth || 1080;
+        const photoCount = Math.max(1, this.photos.length);
+
         // 旋转后需要覆盖的纵向距离（保守估计为对角线长度）
         const needCover = Math.sqrt(viewportH * viewportH + viewportW * viewportW);
-        // 至少需要 needCover * 2 的列高度（一份循环单元 + 视口余量），再向上取整
-        const minCount = Math.ceil((needCover * 2) / cardUnit);
-        return Math.max(minCount, 12);
+        // 至少需要 needCover * 2 的列高度（一份循环单元 + 视口余量）
+        const minByViewport = Math.ceil((needCover * 2) / cardUnit);
+        // 保底：至少 photoCount * 2，且不少于 12
+        const minCount = Math.max(minByViewport, photoCount * 2, 12);
+        // 向上取整到 photoCount 的整数倍，保证循环无缝
+        const fullCycles = Math.ceil(minCount / photoCount);
+        return fullCycles * photoCount;
     }
 
     /**
@@ -206,18 +213,13 @@ class MasonryAlbum {
 
     /**
      * 测量每列的"循环单元高度"
-     * 循环单元高度 = N 张照片占据的高度 = N * (cardH + gap)
-     * （刚好等于把整列向上移动 cycleHeight 后，与原位置完全对齐）
+     * 因为 getPhotosPerColumn() 已保证 photosPerCol 是 photos.length 的整数倍，
+     * 所以 cycleHeight 直接 = 列内实际卡片数 * cardUnit，循环重置时无缝衔接。
      */
     measureColumns() {
         const photosPerCol = this.getPhotosPerColumn();
-        const photoCount = this.photos.length;
-        // 一个完整的"内容循环"应该是 photos.length 的整数倍，
-        // 这样循环重置时照片序列也无缝衔接
-        const fullCycles = Math.max(1, Math.floor(photosPerCol / photoCount));
-        const unitCount = photoCount * fullCycles; // 一个循环单元包含的卡片数
         const cardUnit = this.cardSize.h + this.cardSize.gap;
-        const cycleHeight = unitCount * cardUnit;
+        const cycleHeight = photosPerCol * cardUnit;
 
         this.columns.forEach((c) => {
             c.cycleHeight = cycleHeight;
