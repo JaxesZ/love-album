@@ -113,6 +113,8 @@
     height: 100%;
     overflow: hidden;
     border-radius: 12px;
+    /* 占位背景：图片未加载完时显示粉色渐变，避免白屏 */
+    background: linear-gradient(135deg, #FFE4E1 0%, #FFB6C1 100%);
 }
 
 /* 图片：充满卡片，自动裁切以适配 4:3 */

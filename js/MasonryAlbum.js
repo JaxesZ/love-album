@@ -258,7 +258,21 @@ class MasonryAlbum {
 
         const img = document.createElement('img');
         img.className = 'masonry-img';
-        img.loading = 'lazy';
+        // 异步解码，避免阻塞主线程
+        img.decoding = 'async';
+        // 首屏可见的前 2 行用 eager + high 优先级，让浏览器尽快下载；
+        // 其余用 lazy + low，让浏览器排队下载，减小并发拥塞
+        const isFirstScreen = rowIdx < 2;
+        img.loading = isFirstScreen ? 'eager' : 'lazy';
+        if ('fetchPriority' in img) {
+            img.fetchPriority = isFirstScreen ? 'high' : 'low';
+        } else {
+            // 兼容老浏览器
+            img.setAttribute('fetchpriority', isFirstScreen ? 'high' : 'low');
+        }
+        // 明确尺寸：避免加载时回流，也给浏览器更多调度信息
+        img.width = Math.round(this.cardSize.w || 155);
+        img.height = Math.round(this.cardSize.h || 207);
         img.alt = photo.originalName || '浪漫照片';
         img.src = photo.dataUrl;
 
