@@ -154,9 +154,11 @@ class MasonryAlbum {
         this.cardSize = this.getCardSize();
         const photosPerCol = this.getPhotosPerColumn();
         const photoCount = this.photos.length;
+        // photosPerCol 一定是 photoCount 的整数倍（见 getPhotosPerColumn）
+        const cyclesPerCol = photosPerCol / photoCount;
 
-        // 全局递增的"槽位"，让相邻列之间照片不重复
-        let slot = 0;
+        // 记录上一列的"末尾索引"，用来避免列间衔接处出现相同照片
+        let prevColLastIdx = -1;
 
         for (let c = 0; c < this.columnCount; c++) {
             const col = document.createElement('div');
@@ -164,13 +166,23 @@ class MasonryAlbum {
             const isOdd = c % 2 === 1;
             col.dataset.parity = isOdd ? 'odd' : 'even';
 
+            // 为这一列生成乱序序列：把 [0..photoCount-1] 洗牌 cyclesPerCol 次拼起来
+            // 这样每列照片完全打乱，但仍然是 photos 的完整副本，循环依然无缝
+            const colIndices = this.buildShuffledColumn(
+                photoCount,
+                cyclesPerCol,
+                prevColLastIdx,
+                c
+            );
+
             for (let r = 0; r < photosPerCol; r++) {
-                const photoIdx = slot % photoCount;
+                const photoIdx = colIndices[r];
                 const photo = this.photos[photoIdx];
                 const card = this.createPhotoCard(photo, photoIdx, c, r);
                 col.appendChild(card);
-                slot++;
             }
+
+            prevColLastIdx = colIndices[colIndices.length - 1];
 
             this.inner.appendChild(col);
             this.columns.push({
@@ -406,6 +418,87 @@ class MasonryAlbum {
      */
     setOnPhotoClick(callback) {
         this.onPhotoClick = callback;
+    }
+
+    /**
+     * 为一列生成乱序的照片索引序列
+     * - 把 [0..photoCount-1] 独立洗牌 cycles 次，拼成长度 = photoCount * cycles 的序列
+     * - 保证：序列首项 ≠ prevColLastIdx（避免与左邻列首尾撞图）
+     * - 保证：相邻位置不重复（包括两段洗牌的拼接处、以及循环回首尾的衔接处）
+     * 因为序列仍是 photos 的完整副本拼接，循环重置时不会破坏无缝性。
+     */
+    buildShuffledColumn(photoCount, cycles, prevColLastIdx, colIdx) {
+        if (photoCount <= 0) return [];
+        if (photoCount === 1) {
+            return new Array(cycles).fill(0);
+        }
+
+        const segments = [];
+        for (let i = 0; i < cycles; i++) {
+            segments.push(this.shuffleRange(photoCount, colIdx * 131 + i * 17));
+        }
+
+        // 在拼接处 / 与左邻列衔接处避免连续相同：
+        // 若 segments[i] 的首元素 == 上一段尾元素（或 prevColLastIdx），就把它跟段内某个安全位置交换
+        const fixBoundary = (seg, forbiddenIdx) => {
+            if (seg[0] !== forbiddenIdx) return;
+            for (let k = 1; k < seg.length; k++) {
+                // 找一个交换后两边都不撞的位置
+                const prevOfK = k - 1 >= 0 ? seg[k - 1] : -1;
+                const nextOfK = k + 1 < seg.length ? seg[k + 1] : -1;
+                if (
+                    seg[k] !== forbiddenIdx &&
+                    seg[k] !== prevOfK &&
+                    seg[0] !== nextOfK
+                ) {
+                    [seg[0], seg[k]] = [seg[k], seg[0]];
+                    return;
+                }
+            }
+        };
+
+        // 处理与左邻列的衔接
+        fixBoundary(segments[0], prevColLastIdx);
+
+        // 处理段与段的衔接 + 循环首尾衔接
+        for (let i = 1; i < segments.length; i++) {
+            const prevTail = segments[i - 1][segments[i - 1].length - 1];
+            fixBoundary(segments[i], prevTail);
+        }
+
+        const flat = [].concat(...segments);
+
+        // 处理"循环到顶部"的衔接：列底部最后一张 ≠ 列顶部第一张
+        if (flat.length > 1 && flat[flat.length - 1] === flat[0]) {
+            // 在序列中找一个可以跟末尾交换的位置
+            for (let k = flat.length - 2; k >= 1; k--) {
+                if (
+                    flat[k] !== flat[0] &&
+                    flat[k] !== flat[flat.length - 2] &&
+                    flat[flat.length - 1] !== flat[k - 1] &&
+                    flat[flat.length - 1] !== flat[k + 1 < flat.length ? k + 1 : 0]
+                ) {
+                    [flat[k], flat[flat.length - 1]] = [flat[flat.length - 1], flat[k]];
+                    break;
+                }
+            }
+        }
+
+        return flat;
+    }
+
+    /**
+     * 生成 [0..n-1] 的洗牌数组（Fisher-Yates）
+     * seed 仅用于在 dev 调试时打散不同列的随机性，实际使用 Math.random
+     */
+    shuffleRange(n, _seed = 0) {
+        const arr = new Array(n);
+        for (let i = 0; i < n; i++) arr[i] = i;
+        for (let i = n - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
     }
 
     /**
