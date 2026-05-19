@@ -1,0 +1,7 @@
+{
+  "_comment": "把照片文件放进 images/ 文件夹，然后在下面的 photos 数组里列出文件名即可。",
+  "_comment2": "数组顺序就是相册里的展示顺序，可以自由调整。",
+  "_comment3": "支持的格式：jpg / jpeg / png / webp / gif",
+  "_comment4": "如果 photos 为空数组，前端会自动回退到远程示例照片（Unsplash）。",
+  "photos": []
+}

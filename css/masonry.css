@@ -1,0 +1,413 @@
+/* ========== 斜向网格相册 ========== */
+
+/*
+ * 实现思路（逐列独立滚动方案）：
+ *   1. inner 是一个横向 flex 容器，里面平铺 N 个 .masonry-col
+ *   2. 每列是一条长长的照片列表（首尾相接，至少够覆盖视口对角线高度 × 2）
+ *   3. 每列各自沿 Y 轴负向平移；到达"一个循环单元高度"时重置回起点
+ *   4. 外层 track 整体旋转 --flow-angle，让纵向滚动变成斜向滚动
+ *   5. 砖墙错位：奇数列的初始 translateY 多偏移 (h+g)/2 一张半，无需负 margin
+ */
+:root {
+    --flow-angle: -28deg;       /* 整个 panel 的旋转角度 */
+    --card-w: 155px;
+    --card-h: 207px;            /* 3:4 竖屏 */
+    --grid-gap: 10px;           /* 卡片纵向间距 */
+    --col-gap: 18px;            /* 列与列水平间距 */
+}
+
+/* 自动滚动视口 */
+.masonry-scroll-viewport {
+    position: relative;
+    width: 100%;
+    height: 65vh;
+    min-height: 480px;
+    max-height: 720px;
+    overflow: hidden;
+    border-radius: 24px;
+    /* 边缘羽化，让滚动进出更自然 */
+    -webkit-mask-image: radial-gradient(ellipse 92% 92% at center, #000 55%, transparent 100%);
+    mask-image: radial-gradient(ellipse 92% 92% at center, #000 55%, transparent 100%);
+}
+
+/* 滚动轨道（外层）：充满视口并整体旋转
+   使用 flex 居中让 inner 在 track 中心，从而围绕视口中心向四周扩散 */
+.masonry-scroll-track {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: rotate(var(--flow-angle));
+    transform-origin: center center;
+    will-change: transform;
+}
+
+/* 滚动内层：横向排列若干 .masonry-col
+   宽度由内容决定，flex 把它居中放置在 track（视口）中心 */
+.masonry-scroll-inner {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    column-gap: var(--col-gap);
+    /* 不限制宽度，让所有列自然横向排开 */
+    flex: 0 0 auto;
+    will-change: transform;
+}
+
+/* 每一列：纵向堆叠一长串照片，自身用 transform 做 Y 轴平移
+   单独的列容器实现单独循环，每列向上飘动时照片自然一张张出现 */
+.masonry-col {
+    display: flex;
+    flex-direction: column;
+    row-gap: var(--grid-gap);
+    width: var(--card-w);
+    flex: 0 0 var(--card-w);
+    will-change: transform;
+}
+
+/* 单张照片卡片：固定 3:4 比例，不再单独旋转（由 track 统一旋转） */
+.masonry-item {
+    position: relative;
+    width: var(--card-w);
+    height: var(--card-h);
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    background: linear-gradient(135deg, #FFE4E1 0%, #FFD1DC 100%);
+    box-shadow:
+        0 6px 18px rgba(255, 105, 180, 0.22),
+        0 2px 6px rgba(255, 20, 147, 0.1);
+    opacity: 0;
+    transform: scale(0.92);
+    animation: masonryFadeIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease;
+    will-change: transform, opacity;
+}
+
+@keyframes masonryFadeIn {
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.masonry-item:hover {
+    /* 悬浮时反向旋转抵消 track 的旋转 + 轻微放大，让用户能看到正向图片 */
+    transform: scale(1.1) rotate(calc(-1 * var(--flow-angle)));
+    box-shadow:
+        0 16px 40px rgba(255, 105, 180, 0.45),
+        0 4px 12px rgba(255, 20, 147, 0.22);
+    z-index: 5;
+}
+
+.masonry-item:active {
+    transform: scale(1.05) rotate(calc(-1 * var(--flow-angle)));
+}
+
+/* 卡片内层 */
+.masonry-item-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+/* 图片：充满卡片，自动裁切以适配 4:3 */
+.masonry-img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.05);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.masonry-img.loaded {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* 悬浮遮罩层 */
+.masonry-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        to top,
+        rgba(255, 20, 147, 0.55) 0%,
+        rgba(255, 105, 180, 0.15) 40%,
+        rgba(255, 105, 180, 0) 70%
+    );
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 10px;
+    pointer-events: none;
+}
+
+.masonry-item:hover .masonry-overlay,
+.masonry-item:active .masonry-overlay {
+    opacity: 1;
+}
+
+.masonry-heart {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 20px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+    transform: scale(0.6);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.masonry-item:hover .masonry-heart {
+    transform: scale(1.1);
+    animation: heartBeat 1.2s ease-in-out infinite;
+}
+
+@keyframes heartBeat {
+    0%, 100% { transform: scale(1.1); }
+    50% { transform: scale(1.25); }
+}
+
+.masonry-caption {
+    color: #fff;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 空状态 */
+.masonry-empty {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    max-width: 420px;
+    padding: 60px 20px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 24px;
+    border: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.masonry-empty-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+    animation: floatHeart 3s ease-in-out infinite;
+}
+
+@keyframes floatHeart {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-8px) scale(1.05); }
+}
+
+.masonry-empty-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 4px rgba(255, 105, 180, 0.3);
+}
+
+.masonry-empty-hint {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ========== Lightbox 大图查看器 ========== */
+
+.lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 5, 15, 0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+    padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom);
+}
+
+.lightbox-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.lightbox-content {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.lightbox-img {
+    max-width: 90vw;
+    max-height: 75vh;
+    border-radius: 16px;
+    box-shadow:
+        0 20px 60px rgba(255, 105, 180, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.lightbox-img.loaded {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.lightbox-caption {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    max-width: 80vw;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.lightbox-counter {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 4px 14px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lightbox-close {
+    position: absolute;
+    top: calc(env(safe-area-inset-top) + 16px);
+    right: 16px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 2;
+}
+
+.lightbox-close svg {
+    width: 22px;
+    height: 22px;
+}
+
+.lightbox-close:hover {
+    background: rgba(255, 105, 180, 0.4);
+    transform: scale(1.05);
+}
+
+.lightbox-close:active {
+    transform: scale(0.95);
+}
+
+.lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 2;
+}
+
+.lightbox-nav svg {
+    width: 26px;
+    height: 26px;
+}
+
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+
+.lightbox-nav:hover {
+    background: rgba(255, 105, 180, 0.4);
+    transform: translateY(-50%) scale(1.08);
+}
+
+.lightbox-nav:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+    :root {
+        --card-w: 120px;
+        --card-h: 160px;        /* 3:4 竖屏 */
+        --grid-gap: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --card-w: 98px;
+        --card-h: 130px;        /* 3:4 竖屏 */
+        --grid-gap: 4px;
+    }
+    .masonry-scroll-viewport {
+        height: 60vh;
+        min-height: 400px;
+        border-radius: 18px;
+    }
+    .masonry-item {
+        border-radius: 10px;
+    }
+    .masonry-caption {
+        font-size: 11px;
+    }
+    .masonry-heart {
+        font-size: 16px;
+        top: 6px;
+        right: 6px;
+    }
+    .lightbox-nav {
+        width: 40px;
+        height: 40px;
+    }
+    .lightbox-nav svg {
+        width: 22px;
+        height: 22px;
+    }
+    .lightbox-prev { left: 8px; }
+    .lightbox-next { right: 8px; }
+}

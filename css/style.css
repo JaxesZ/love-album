@@ -1,0 +1,413 @@
+/* Tailwind CSS CDN */
+@import url('https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css');
+
+/* CSS 变量定义 */
+:root {
+    /* 520 浪漫主题色彩 */
+    --color-primary: #FF69B4;
+    --color-primary-light: #FFB6C1;
+    --color-primary-dark: #FF1493;
+    --color-background-start: #FFB6C1;
+    --color-background-end: #E6E6FA;
+    --color-text-white: #FFFFFF;
+    --color-text-primary: #FF69B4;
+    --color-text-dark: #333333;
+    --color-glass-bg: rgba(255, 255, 255, 0.2);
+    --color-glass-border: rgba(255, 255, 255, 0.3);
+    --color-danger: #FF6B9D;
+    
+    /* 字体系统 */
+    --font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-size-title: 28px;
+    --font-size-subtitle: 16px;
+    --font-size-body: 14px;
+    --font-weight-title: 600;
+    --font-weight-normal: 400;
+    
+    /* 间距系统 */
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* 动画时长 */
+    --transition-fast: 0.2s;
+    --transition-normal: 0.3s;
+    --transition-slow: 0.5s;
+    
+    /* iOS 安全区域 */
+    --safe-area-inset-top: env(safe-area-inset-top);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom);
+}
+
+/* 全局重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Body 样式 */
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-body);
+    font-weight: var(--font-weight-normal);
+    color: var(--color-text-white);
+    background: linear-gradient(135deg, var(--color-background-start) 0%, var(--color-background-end) 100%);
+    background-attachment: fixed;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: pan-y;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+}
+
+/* 主容器 */
+.main-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding: var(--safe-area-inset-top) var(--spacing-md) var(--safe-area-inset-bottom);
+}
+
+/* ========== 顶部标题区 ========== */
+.header-section {
+    text-align: center;
+    padding: var(--spacing-lg) var(--spacing-md);
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid var(--color-glass-border);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 8px 32px rgba(255, 105, 180, 0.15);
+}
+
+.main-title {
+    font-size: var(--font-size-title);
+    font-weight: var(--font-weight-title);
+    color: var(--color-text-white);
+    margin-bottom: var(--spacing-xs);
+    text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
+    letter-spacing: 2px;
+}
+
+.sub-title {
+    font-size: var(--font-size-subtitle);
+    color: var(--color-text-white);
+    opacity: 0.9;
+    font-weight: 300;
+    letter-spacing: 4px;
+}
+
+/* ========== 相册展示区（瀑布流） ========== */
+.album-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--spacing-md) 0;
+    width: 100%;
+}
+
+.masonry-wrapper {
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+}
+
+.page-indicator {
+    font-size: var(--font-size-subtitle);
+    color: var(--color-text-white);
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: var(--spacing-xs) var(--spacing-lg);
+    border-radius: 20px;
+    border: 1px solid var(--color-glass-border);
+    box-shadow: 0 4px 16px rgba(255, 105, 180, 0.1);
+    align-self: center;
+    margin-top: var(--spacing-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.page-indicator #currentPage {
+    font-weight: 600;
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(255, 20, 147, 0.3);
+}
+
+/* ========== 操作按钮区 ========== */
+.controls-section {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) var(--spacing-md);
+    justify-content: center;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: 50px;
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-normal) ease;
+    outline: none;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: var(--color-text-white);
+}
+
+.btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(255, 105, 180, 0.4);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--color-primary);
+    border: 2px solid var(--color-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--color-glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* ========== 设置面板 ========== */
+.settings-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 30px 30px 0 0;
+    box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.1);
+    transform: translateY(100%);
+    transition: transform var(--transition-slow) cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.settings-panel.active {
+    transform: translateY(0);
+}
+
+.settings-content {
+    padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-xl);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid rgba(255, 105, 180, 0.2);
+}
+
+.settings-header h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.close-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: var(--color-glass-bg);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast) ease;
+}
+
+.close-btn svg {
+    width: 20px;
+    height: 20px;
+    color: var(--color-text-primary);
+}
+
+.close-btn:active {
+    transform: scale(0.9);
+}
+
+/* 设置选项 */
+.settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.setting-item {
+    padding: var(--spacing-md);
+    background: var(--color-glass-bg);
+    border-radius: 16px;
+    border: 1px solid var(--color-glass-border);
+}
+
+.setting-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--color-text-dark);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+/* 开关按钮 */
+.toggle-switch {
+    position: relative;
+    width: 50px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: var(--transition-normal);
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: var(--transition-normal);
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* 设置按钮 */
+.settings-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+}
+
+.settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-md);
+    border: none;
+    border-radius: 12px;
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-normal) ease;
+    background: var(--color-glass-bg);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-glass-border);
+}
+
+.settings-btn:active {
+    transform: scale(0.98);
+}
+
+.settings-btn.danger {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+/* ========== 响应式设计 ========== */
+@media (max-width: 480px) {
+    :root {
+        --font-size-title: 24px;
+        --font-size-subtitle: 14px;
+        --font-size-body: 13px;
+    }
+
+    .controls-section {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
+
+@media (min-width: 768px) {
+    .main-container {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+}
+
+/* ========== iOS 兼容性优化 ========== */
+@supports (-webkit-touch-callout: none) {
+    body {
+        /* iOS Safari 最小高度修复 */
+        min-height: -webkit-fill-available;
+    }
+}
+
+/* 防止 iOS 双击缩放 */
+button, a {
+    touch-action: manipulation;
+}
+
+/* iOS 滚动优化 */
+.settings-panel {
+    -webkit-overflow-scrolling: touch;
+}
