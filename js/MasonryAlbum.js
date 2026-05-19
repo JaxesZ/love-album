@@ -175,11 +175,18 @@ class MasonryAlbum {
                 c
             );
 
-            for (let r = 0; r < photosPerCol; r++) {
-                const photoIdx = colIndices[r];
-                const photo = this.photos[photoIdx];
-                const card = this.createPhotoCard(photo, photoIdx, c, r);
-                col.appendChild(card);
+            // 关键：渲染【两份】相同内容，让列底部永远有第二份内容做"后备"。
+            // 列上滚到第一份的末尾时，第二份正好顶在视口里，
+            // 此时只需要把 offsetY 一次性回退 cycleHeight，视觉上完全无缝（因为两份内容一致）。
+            // 不复制两份的话，列底部之外就是空白，会出现你看到的"滚到底变空"现象。
+            for (let dup = 0; dup < 2; dup++) {
+                for (let r = 0; r < photosPerCol; r++) {
+                    const photoIdx = colIndices[r];
+                    const photo = this.photos[photoIdx];
+                    // rowIdx 仍按"在一份内的行号"算，避免首屏动画 delay 累加得太大
+                    const card = this.createPhotoCard(photo, photoIdx, c, r);
+                    col.appendChild(card);
+                }
             }
 
             prevColLastIdx = colIndices[colIndices.length - 1];
@@ -225,8 +232,10 @@ class MasonryAlbum {
 
     /**
      * 测量每列的"循环单元高度"
-     * 因为 getPhotosPerColumn() 已保证 photosPerCol 是 photos.length 的整数倍，
-     * 所以 cycleHeight 直接 = 列内实际卡片数 * cardUnit，循环重置时无缝衔接。
+     * 注意：DOM 里渲染了 2 份内容（共 photosPerCol * 2 张），
+     * 但 cycleHeight 只取【一份】的高度——
+     * 这样列向上平移 cycleHeight 后，第二份内容刚好对齐到第一份原来的位置，
+     * 一次性把 offsetY 加回 cycleHeight 就完成无缝重置。
      */
     measureColumns() {
         const photosPerCol = this.getPhotosPerColumn();
