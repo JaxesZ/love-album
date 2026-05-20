@@ -303,7 +303,26 @@ class MasonryAlbum {
             img.classList.add('loaded');
         };
 
+        // 兜底策略：
+        //   1. jsDelivr CDN 失败 → 自动重试一次 GitHub Pages 直链
+        //   2. 再失败 → 显示占位 SVG
+        // 通过 dataset.fallbackTried 防止无限循环。
         img.onerror = () => {
+            const helpers = window.__photoUrlHelpers;
+            const isCdnUrl = typeof img.src === 'string' && img.src.indexOf('cdn.jsdelivr.net') !== -1;
+            if (
+                !img.dataset.fallbackTried &&
+                isCdnUrl &&
+                helpers &&
+                typeof helpers.buildPhotoFallbackUrl === 'function' &&
+                photo.originalName
+            ) {
+                img.dataset.fallbackTried = '1';
+                console.warn(`[图片兜底] jsDelivr 失败，回退到 GitHub Pages: ${photo.originalName}`);
+                img.src = helpers.buildPhotoFallbackUrl(photo.originalName);
+                return;
+            }
+
             img.src = 'data:image/svg+xml,' + encodeURIComponent(`
                 <svg width="400" height="500" xmlns="http://www.w3.org/2000/svg">
                     <defs>

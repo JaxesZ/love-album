@@ -332,11 +332,17 @@ class PhotoManager {
      * - 用 urls 重新生成预设照片
      * - 用户上传的照片（无 isPreset 标记）完全不动
      * 适用于：本地 images/manifest.json 内容更新后，用户刷新时自动看到新照片
-     * @param {Array<string>} urls
+     * @param {Array<string|{url:string, originalName?:string}>} urls
      * @returns {boolean} 预设照片列表是否发生了变化
      */
     syncPresetPhotos(urls) {
-        const newSignature = JSON.stringify(urls);
+        // 兼容两种格式：字符串数组 或 {url, originalName} 对象数组
+        const normalized = urls.map((item) => {
+            if (typeof item === 'string') return { url: item, originalName: '' };
+            return { url: item.url, originalName: item.originalName || '' };
+        });
+
+        const newSignature = JSON.stringify(normalized.map(n => n.url));
 
         // 取出现有的预设照片，对比签名
         const oldPresets = this.photos.filter(p => p.isPreset);
@@ -351,11 +357,12 @@ class PhotoManager {
         const userPhotos = this.photos.filter(p => !p.isPreset);
 
         // 重新生成预设照片
-        const newPresets = urls.map((url, index) => ({
+        const newPresets = normalized.map((item, index) => ({
             id: 'preset_' + index,
-            dataUrl: url,
+            dataUrl: item.url,
             uploadTime: new Date().toISOString(),
-            originalName: `预设照片 ${index + 1}`,
+            // 保留真实文件名（如 "1.jpg"），CDN 兜底时需要拿它拼 GitHub Pages 直链
+            originalName: item.originalName || `预设照片 ${index + 1}`,
             isPreset: true
         }));
 

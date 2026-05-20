@@ -25,6 +25,57 @@ const fallbackPhotos = [
 // 本地照片清单文件路径（相对于 index.html）
 const LOCAL_MANIFEST_URL = 'images/manifest.json';
 
+// GitHub 仓库信息：用来拼 jsDelivr CDN 地址
+// 部署在 GitHub Pages（jaxesz.github.io/love-album/）时，从 location 自动推断；
+// 写死保底也行，避免改了仓库名 / 用户名忘了同步。
+const GITHUB_USER = 'JaxesZ';
+const GITHUB_REPO = 'love-album';
+const GITHUB_BRANCH = 'main';
+
+/**
+ * 判断当前是否在线上环境（GitHub Pages 或其它 https/http 站点访问）
+ * - 线上：用 jsDelivr CDN，国内访问快得多，并配合 onerror 兜底回 GitHub Pages
+ * - 本地（localhost / file:// / 127.0.0.1）：用相对路径 images/xxx.jpg 方便调试
+ *   注意：你本地 images/ 已经清空了（skip-worktree），所以本地预览会用兜底图，正常。
+ */
+function isOnlineEnv() {
+    const host = location.hostname;
+    if (!host) return false; // file://
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') return false;
+    return true;
+}
+
+/**
+ * 把照片文件名转成最终可访问的 URL
+ * @param {string} name - 文件名，例如 "1.jpg"
+ * @returns {string}
+ */
+function buildPhotoUrl(name) {
+    const encoded = encodeURIComponent(name.trim());
+    if (isOnlineEnv()) {
+        // jsDelivr 走国内 CDN（速度比 GitHub Pages 直连快 10-30 倍）
+        return `https://cdn.jsdelivr.net/gh/${GITHUB_USER}/${GITHUB_REPO}@${GITHUB_BRANCH}/images/${encoded}`;
+    }
+    return 'images/' + encoded;
+}
+
+/**
+ * 给定一个图片 URL，返回它的 GitHub Pages 原始兜底地址
+ * （当 jsDelivr 抽风时用，由 MasonryAlbum 的 onerror 调用）
+ * @param {string} name - 文件名
+ * @returns {string}
+ */
+function buildPhotoFallbackUrl(name) {
+    return `https://${GITHUB_USER.toLowerCase()}.github.io/${GITHUB_REPO}/images/${encodeURIComponent(name.trim())}`;
+}
+
+// 暴露给其它模块（MasonryAlbum / Lightbox 等）使用
+window.__photoUrlHelpers = {
+    buildPhotoUrl,
+    buildPhotoFallbackUrl,
+    isOnlineEnv,
+};
+
 /**
  * 加载本地 images/manifest.json 中列出的照片
  * 如果文件不存在 / 为空 / 解析失败，返回 null，由调用方决定是否回退
@@ -42,12 +93,18 @@ async function loadLocalManifest() {
             console.log('本地照片清单为空，使用远程示例照片');
             return null;
         }
-        // 把文件名拼成相对 URL，对中文做编码避免 GitHub Pages 上 404
-        const urls = data.photos
+        // 把文件名拼成最终 URL：
+        //   - 线上 → jsDelivr CDN（国内快）
+        //   - 本地 → 相对路径
+        // 同时保留原始文件名，CDN 失败时兜底回 GitHub Pages 要用
+        const items = data.photos
             .filter((name) => typeof name === 'string' && name.trim().length > 0)
-            .map((name) => 'images/' + encodeURIComponent(name.trim()));
-        console.log(`从本地清单加载了 ${urls.length} 张照片`);
-        return urls.length > 0 ? urls : null;
+            .map((name) => ({
+                url: buildPhotoUrl(name),
+                originalName: name.trim(),
+            }));
+        console.log(`从本地清单加载了 ${items.length} 张照片（${isOnlineEnv() ? 'jsDelivr CDN' : '本地相对路径'}）`);
+        return items.length > 0 ? items : null;
     } catch (error) {
         console.warn('读取本地照片清单失败，使用远程示例照片:', error);
         return null;
@@ -62,8 +119,11 @@ async function initApp() {
         console.log('=== 浪漫相册应用启动 (瀑布流版) ===');
 
         // 1. 决定预设照片来源：优先本地 images/manifest.json，否则远程兜底
+        //    本地清单返回 {url, originalName}[]，远程兜底是纯 URL，下面统一一下格式
         const localPhotos = await loadLocalManifest();
-        const presetPhotos = (localPhotos && localPhotos.length > 0) ? localPhotos : fallbackPhotos;
+        const presetPhotos = (localPhotos && localPhotos.length > 0)
+            ? localPhotos
+            : fallbackPhotos.map((url) => ({ url, originalName: '' }));
 
         // 2. 初始化照片管理器
         photoManager = new PhotoManager();
